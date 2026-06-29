@@ -75,6 +75,51 @@ export default function Home() {
   ];
 
   const generateReply = async () => {
+  if (!selectedConv || !apiKey) {
+    alert('Please select a conversation and enter your OpenRouter API key');
+    return;
+  }
+
+  setIsGenerating(true);
+  try {
+    const conv = conversations.find(c => c.id === selectedConv);
+    const lastUserMsg = conv.messages.findLast(m => m.role === 'user')?.content || '';
+    
+    const response = await fetch('https://openrouter.io/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': typeof window !== 'undefined' ? window.location.href : 'http://localhost:3000',
+        'X-Title': 'Social Media Agent'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [
+          {
+            role: 'user',
+            content: `You are a professional social media assistant. Draft a brief, friendly reply to this message. Keep it under 150 characters. Message: "${lastUserMsg}"`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'API error');
+    }
+
+    const data = await response.json();
+    const replyText = data.choices[0].message.content;
+    setDraftReply(replyText);
+  } catch (error) {
+    alert('Error generating reply. Check your OpenRouter API key: ' + error.message);
+  } finally {
+    setIsGenerating(false);
+  }
+};
     if (!selectedConv || !apiKey) {
       alert('Please select a conversation and enter your API key');
       return;
